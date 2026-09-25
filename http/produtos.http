@@ -64,9 +64,51 @@ Content-Type: application/json
   "vendedorId": 5
 }
 
-### 8. Deletar produto existente (sem pedidos) — esperado 204
+### 8. Deletar (inativar) produto existente — esperado 204
+# Soft delete: a linha fica no banco com ativo = false; funciona mesmo se o produto estiver em pedidos
 # Ajuste o id com o retornado na requisição 1
 DELETE http://localhost:8080/produtos/20
 
 ### 9. Deletar produto inexistente — esperado 404 com corpo ErroResponse
 DELETE http://localhost:8080/produtos/999
+
+# ============================================================
+# INATIVAÇÃO (soft delete) — produto inativo é tratado como inexistente
+# Ajuste: 20 = id do produto inativado na requisição 8
+#         compradorId = id de um usuário ativo
+# ============================================================
+
+### 10. Buscar produto inativado — esperado 404
+GET http://localhost:8080/produtos/20
+
+### 11. Listar produtos — esperado 200, SEM o produto inativado
+GET http://localhost:8080/produtos
+
+### 12. Atualizar produto inativado — esperado 404
+PUT http://localhost:8080/produtos/20
+Content-Type: application/json
+
+{
+  "nome": "Não deve atualizar",
+  "descricao": "Produto inativo",
+  "preco": 1.00,
+  "quantidadeEstoque": 1,
+  "vendedorId": 5
+}
+
+### 13. Inativar de novo — esperado 404
+DELETE http://localhost:8080/produtos/20
+
+### 14. Pedido com produto inativado — esperado 404 "Produto não encontrado"
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+
+{
+  "compradorId": 6,
+  "itens": [
+    { "produtoId": 20, "quantidade": 1 }
+  ]
+}
+
+# Obs.: produtos de um VENDEDOR inativado também são tratados como inexistentes
+# (somem da lista, GET/PUT/DELETE/pedido dão 404) — ver usuarios.http, req. 7.

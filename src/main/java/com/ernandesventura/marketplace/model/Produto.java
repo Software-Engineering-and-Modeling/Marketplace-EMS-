@@ -1,4 +1,5 @@
 package com.ernandesventura.marketplace.model;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -23,6 +24,9 @@ public class Produto {
     private BigDecimal preco;
 
     private Integer quantidadeEstoque;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean ativo = true;
 
     @ManyToOne
     @JoinColumn(name = "vendedor_id")
@@ -86,6 +90,14 @@ public class Produto {
 
     public void setVendedor(Usuario vendedor) {
         this.vendedor = vendedor;
+    }
+
+    public boolean isAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(boolean ativo) {
+        this.ativo = ativo;
     }
 
 }

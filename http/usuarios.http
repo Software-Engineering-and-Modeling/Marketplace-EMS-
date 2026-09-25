@@ -41,7 +41,8 @@ Content-Type: application/json
   "email": "ninguem@teste.com"
 }
 
-### 7. Deletar usuário existente (sem produtos nem pedidos) — esperado 204
+### 7. Deletar (inativar) usuário existente — esperado 204
+# Soft delete: a linha fica no banco com ativo = false; funciona mesmo se ele tiver produtos/pedidos
 # Ajuste o id com o retornado na requisição 1
 DELETE http://localhost:8080/usuarios/10
 
@@ -59,3 +60,53 @@ Content-Type: application/json
     { "produtoId": 1, "quantidade": 1 }
   ]
 }
+
+# ============================================================
+# INATIVAÇÃO (soft delete) — usuário inativo é tratado como inexistente
+# Ajuste: 10 = id do usuário inativado na requisição 7
+#         produtoId (req. 14) = id de um produto ativo
+# ============================================================
+
+### 10. Buscar usuário inativado — esperado 404
+GET http://localhost:8080/usuarios/10
+
+### 11. Listar usuários — esperado 200, SEM o usuário inativado
+GET http://localhost:8080/usuarios
+
+### 12. Atualizar usuário inativado — esperado 404
+PUT http://localhost:8080/usuarios/10
+Content-Type: application/json
+
+{
+  "nome": "Não deve atualizar",
+  "email": "nao@teste.com"
+}
+
+### 13. Inativar de novo — esperado 404
+DELETE http://localhost:8080/usuarios/10
+
+### 14. Pedido com comprador inativado — esperado 404 "Usuário não encontrado"
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+
+{
+  "compradorId": 10,
+  "itens": [
+    { "produtoId": 1, "quantidade": 1 }
+  ]
+}
+
+### 15. Criar produto com vendedor inativado — esperado 404 "Usuário não encontrado"
+POST http://localhost:8080/produtos
+Content-Type: application/json
+
+{
+  "nome": "Não deve criar",
+  "descricao": "Vendedor inativo",
+  "preco": 10.00,
+  "quantidadeEstoque": 1,
+  "vendedorId": 10
+}
+
+### 16. Listar pedidos — esperado 200; pedidos antigos do usuário inativado continuam aparecendo
+GET http://localhost:8080/pedidos
