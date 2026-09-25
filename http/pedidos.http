@@ -1,0 +1,104 @@
+# ============================================================
+# PREPARAÇÃO — criar usuários e produtos para os testes
+# ============================================================
+
+### 1. Criar vendedor
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+
+{
+  "nome": "Vendedor Teste",
+  "email": "vendedor@teste.com"
+}
+
+### 2. Criar comprador
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+
+{
+  "nome": "Comprador Teste",
+  "email": "comprador@teste.com"
+}
+
+### 3. Criar produto Teclado (estoque 10)
+# Ajuste "vendedor.id" com o id retornado na requisição 1
+POST http://localhost:8080/produtos
+Content-Type: application/json
+
+{
+  "nome": "Teclado",
+  "descricao": "Teclado mecânico",
+  "preco": 150.00,
+  "quantidadeEstoque": 10,
+  "vendedor": { "id": 5 }
+}
+
+### 4. Criar produto Mouse (estoque 1)
+# Ajuste "vendedor.id" com o id retornado na requisição 1
+POST http://localhost:8080/produtos
+Content-Type: application/json
+
+{
+  "nome": "Mouse",
+  "descricao": "Mouse sem fio",
+  "preco": 80.00,
+  "quantidadeEstoque": 1,
+  "vendedor": { "id": 5 }
+}
+###
+# ============================================================
+# TESTES DE PEDIDO
+# Ajuste: compradorId = id da req. 2 | Teclado = id da req. 3 | Mouse = id da req. 4
+# ============================================================
+
+### 5. Pedido válido — esperado 201, total = 300.00 (Teclado estoque 10 → 8)
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+
+{
+  "compradorId": 4,
+  "itens": [
+    { "produtoId": 5, "quantidade": 2 }
+  ]
+}
+
+### 6. Produto inexistente — esperado 404
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+
+{
+  "compradorId": 6,
+  "itens": [
+    { "produtoId": 9999, "quantidade": 1 }
+  ]
+}
+
+### 7. Estoque insuficiente — esperado 409 (Mouse tem só 1)
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+
+{
+  "compradorId": 4,
+  "itens": [
+    { "produtoId": 3, "quantidade": 5 }
+  ]
+}
+
+### 8. Rollback — Teclado OK + Mouse sem estoque — esperado 409
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+
+{
+  "compradorId": 2,
+  "itens": [
+    { "produtoId": 1, "quantidade": 3 },
+    { "produtoId": 2, "quantidade": 5 }
+  ]
+}
+
+### 9. Conferir rollback — Teclado deve continuar com estoque 8 (e não 5)
+# Ajuste o id no final da URL para o id do Teclado
+GET http://localhost:8080/produtos/1
+
+### 10. Listar pedidos — esperado 200, só o pedido da req. 5, sem loop no JSON
+GET http://localhost:8080/pedidos

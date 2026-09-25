@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: marketplace-db
+    environment:
+      POSTGRES_DB: marketplace
+      POSTGRES_USER: marketplace
+      POSTGRES_PASSWORD: marketplace
+    ports:
+      - "5432:5432"
+    volumes:
+      - marketplace-db-data:/var/lib/postgresql/data
+
+volumes:
+  marketplace-db-data:
