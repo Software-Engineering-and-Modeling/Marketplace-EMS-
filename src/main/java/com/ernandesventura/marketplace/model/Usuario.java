@@ -1,4 +1,5 @@
 package com.ernandesventura.marketplace.model;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -15,6 +16,9 @@ public class Usuario {
     private String nome;
 
     private String email;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean ativo = true;
 
     public Usuario() {
     }
@@ -46,5 +50,13 @@ public class Usuario {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public boolean isAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(boolean ativo) {
+        this.ativo = ativo;
     }
 }

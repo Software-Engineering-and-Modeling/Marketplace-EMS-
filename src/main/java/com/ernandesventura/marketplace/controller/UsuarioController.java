@@ -52,7 +52,7 @@ public class UsuarioController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        usuarioService.deletar(id);
+        usuarioService.inativar(id);
         return ResponseEntity.noContent().build();
     }
 }

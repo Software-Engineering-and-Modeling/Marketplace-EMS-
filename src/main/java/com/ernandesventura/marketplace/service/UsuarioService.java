@@ -27,7 +27,7 @@ public class UsuarioService {
 
     public List<UsuarioResponse> listarTodos() {
         List<UsuarioResponse> resposta = new ArrayList<>();
-        for (Usuario usuario : usuarioRepository.findAll()) {
+        for (Usuario usuario : usuarioRepository.findByAtivoTrue()) {
             resposta.add(UsuarioResponse.fromEntity(usuario));
         }
         return resposta;
@@ -46,13 +46,14 @@ public class UsuarioService {
         return UsuarioResponse.fromEntity(usuarioAtualizado);
     }
 
-    public void deletar(Long id) {
+    public void inativar(Long id) {
         Usuario usuario = buscarEntidadePorId(id);
-        usuarioRepository.delete(usuario);
+        usuario.setAtivo(false);
+        usuarioRepository.save(usuario);
     }
 
     public Usuario buscarEntidadePorId(Long id) {
-        return usuarioRepository.findById(id)
+        return usuarioRepository.findByIdAndAtivoTrue(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado: " + id));
     }
 }

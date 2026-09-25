@@ -33,7 +33,7 @@ public class ProdutoService {
 
     public List<ProdutoResponse> listarTodos() {
         List<ProdutoResponse> resposta = new ArrayList<>();
-        for (Produto produto : produtoRepository.findAll()) {
+        for (Produto produto : produtoRepository.findByAtivoTrueAndVendedorAtivoTrue()) {
             resposta.add(ProdutoResponse.fromEntity(produto));
         }
         return resposta;
@@ -54,13 +54,14 @@ public class ProdutoService {
         return ProdutoResponse.fromEntity(produtoAtualizado);
     }
 
-    public void deletar(Long id) {
+    public void inativar(Long id) {
         Produto produto = buscarEntidadePorId(id);
-        produtoRepository.delete(produto);
+        produto.setAtivo(false);
+        produtoRepository.save(produto);
     }
 
     public Produto buscarEntidadePorId(Long id) {
-        return produtoRepository.findById(id)
+        return produtoRepository.findByIdAndAtivoTrueAndVendedorAtivoTrue(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Produto não encontrado: " + id));
     }
 

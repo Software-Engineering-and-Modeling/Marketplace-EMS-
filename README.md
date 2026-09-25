@@ -9,6 +9,10 @@ decisões de arquitetura (camadas, DTOs, transações, tratamento de erros).
 - **Usuários**: CRUD completo. Um usuário pode ser comprador e/ou vendedor.
 - **Produtos**: CRUD completo, com preço, estoque e vendedor. O vendedor é
   definido na criação e não muda no `PUT`.
+- **Exclusão lógica (soft delete)**: o `DELETE` de usuário e de produto não
+  apaga o registro — marca como inativo. Registros inativos são tratados como
+  inexistentes (somem das listagens e respondem 404), e os produtos de um
+  vendedor inativo também somem. O histórico de pedidos fica intacto.
 - **Pedidos**: criação e listagem. Ao criar um pedido, o estoque de cada
   produto é validado e debitado.
   - Tudo ou nada: se um item do pedido falhar (ex.: estoque insuficiente),
@@ -64,7 +68,7 @@ automaticamente (`ddl-auto=update`).
 | GET    | `/usuarios/{id}` | Busca por ID       |
 | POST   | `/usuarios`      | Cria um usuário    |
 | PUT    | `/usuarios/{id}` | Atualiza           |
-| DELETE | `/usuarios/{id}` | Remove             |
+| DELETE | `/usuarios/{id}` | Remove (inativa)   |
 
 ### Produtos
 
@@ -74,7 +78,7 @@ automaticamente (`ddl-auto=update`).
 | GET    | `/produtos/{id}` | Busca por ID       |
 | POST   | `/produtos`      | Cria um produto    |
 | PUT    | `/produtos/{id}` | Atualiza           |
-| DELETE | `/produtos/{id}` | Remove             |
+| DELETE | `/produtos/{id}` | Remove (inativa)   |
 
 ### Pedidos
 
@@ -181,7 +185,7 @@ Os erros de negócio são tratados por um handler global
 
 | Status | Quando                                                        |
 |--------|---------------------------------------------------------------|
-| 404    | Usuário, produto ou vendedor não encontrado (em qualquer rota) |
+| 404    | Usuário, produto ou vendedor não encontrado ou inativo (em qualquer rota) |
 | 409    | Estoque insuficiente para o pedido                            |
 
 ## Próximos passos
@@ -192,4 +196,6 @@ Os erros de negócio são tratados por um handler global
 - Pagamento (integração com gateway)
 - Avaliações de produtos e vendedores
 - Imagens de produto
+- Pausar/retomar a venda de um produto (reversível, diferente da exclusão)
+- Anonimização de dados de usuários excluídos (LGPD)
 - IDs únicos com UUID em todas as entidades (após a autenticação)
