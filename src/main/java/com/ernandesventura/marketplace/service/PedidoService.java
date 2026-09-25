@@ -3,8 +3,6 @@ package com.ernandesventura.marketplace.service;
 import com.ernandesventura.marketplace.dto.ItemPedidoRequest;
 import com.ernandesventura.marketplace.dto.PedidoRequest;
 import com.ernandesventura.marketplace.dto.PedidoResponse;
-import com.ernandesventura.marketplace.exception.EstoqueInsuficienteException;
-import com.ernandesventura.marketplace.exception.RecursoNaoEncontradoException;
 import com.ernandesventura.marketplace.model.ItemPedido;
 import com.ernandesventura.marketplace.model.Pedido;
 import com.ernandesventura.marketplace.model.Produto;
@@ -32,20 +30,15 @@ public class PedidoService {
     @Transactional
     public PedidoResponse criar(PedidoRequest request) {
         Long compradorId = request.compradorId();
-        Usuario comprador = usuarioService.buscarPorId(compradorId).orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado: " + compradorId));
+        Usuario comprador = usuarioService.buscarEntidadePorId(compradorId);
 
         Pedido pedido = new Pedido(comprador, LocalDateTime.now());
 
         for (ItemPedidoRequest itemRequest : request.itens()) {
-            Long produtoId = itemRequest.produtoId();
-            Produto produto = produtoService.buscarPorId(produtoId).orElseThrow(() -> new RecursoNaoEncontradoException("Produto não encontrado: " + produtoId));
+            Produto produto = produtoService.buscarEntidadePorId(itemRequest.produtoId());
 
             Integer quantidade = itemRequest.quantidade();
-            if (produto.getQuantidadeEstoque() < quantidade) {
-                throw new EstoqueInsuficienteException("Estoque insuficiente para o produto: " + produto.getNome());
-            }
-            produto.setQuantidadeEstoque(produto.getQuantidadeEstoque() - quantidade);
-            produtoService.salvar(produto);
+            produtoService.debitarEstoque(produto, quantidade);
 
             ItemPedido item = new ItemPedido(pedido, produto, quantidade, produto.getPreco());
             pedido.getItens().add(item);

@@ -1,0 +1,72 @@
+# ============================================================
+# TESTES DE PRODUTO (após migração para DTOs)
+# Ajuste: vendedorId = id de um usuário existente (ex.: 5)
+#         onde aparece o id 20, use o id retornado na requisição 1
+# ============================================================
+
+### 1. Criar produto — esperado 201, corpo com vendedorId e vendedorNome
+POST http://localhost:8080/produtos
+Content-Type: application/json
+
+{
+  "nome": "Monitor",
+  "descricao": "Monitor 24 polegadas",
+  "preco": 900.00,
+  "quantidadeEstoque": 3,
+  "vendedorId": 5
+}
+
+### 2. Criar produto com vendedor inexistente — esperado 404 "Usuário não encontrado: 999"
+POST http://localhost:8080/produtos
+Content-Type: application/json
+
+{
+  "nome": "Produto Órfão",
+  "descricao": "Vendedor não existe",
+  "preco": 10.00,
+  "quantidadeEstoque": 1,
+  "vendedorId": 999
+}
+
+### 3. Listar produtos — esperado 200
+GET http://localhost:8080/produtos
+
+### 4. Buscar por id existente — esperado 200
+# Ajuste o id com o retornado na requisição 1
+GET http://localhost:8080/produtos/20
+
+### 5. Buscar por id inexistente — esperado 404 com corpo ErroResponse
+GET http://localhost:8080/produtos/999
+
+### 6. Atualizar produto tentando trocar o vendedor — esperado 200,
+# nome/preço/estoque atualizados e vendedorId INALTERADO (continua o da req. 1)
+# Ajuste o id com o retornado na requisição 1; vendedorId = outro usuário existente
+PUT http://localhost:8080/produtos/20
+Content-Type: application/json
+
+{
+  "nome": "Monitor 27",
+  "descricao": "Monitor 27 polegadas",
+  "preco": 1200.00,
+  "quantidadeEstoque": 2,
+  "vendedorId": 6
+}
+
+### 7. Atualizar produto inexistente — esperado 404 com corpo ErroResponse
+PUT http://localhost:8080/produtos/999
+Content-Type: application/json
+
+{
+  "nome": "Ninguém",
+  "descricao": "Não existe",
+  "preco": 1.00,
+  "quantidadeEstoque": 1,
+  "vendedorId": 5
+}
+
+### 8. Deletar produto existente (sem pedidos) — esperado 204
+# Ajuste o id com o retornado na requisição 1
+DELETE http://localhost:8080/produtos/20
+
+### 9. Deletar produto inexistente — esperado 404 com corpo ErroResponse
+DELETE http://localhost:8080/produtos/999

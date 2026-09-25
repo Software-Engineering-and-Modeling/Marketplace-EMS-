@@ -21,7 +21,7 @@ Content-Type: application/json
 }
 
 ### 3. Criar produto Teclado (estoque 10)
-# Ajuste "vendedor.id" com o id retornado na requisição 1
+# Ajuste "vendedorId" com o id retornado na requisição 1
 POST http://localhost:8080/produtos
 Content-Type: application/json
 
@@ -30,11 +30,11 @@ Content-Type: application/json
   "descricao": "Teclado mecânico",
   "preco": 150.00,
   "quantidadeEstoque": 10,
-  "vendedor": { "id": 5 }
+  "vendedorId": 5
 }
 
 ### 4. Criar produto Mouse (estoque 1)
-# Ajuste "vendedor.id" com o id retornado na requisição 1
+# Ajuste "vendedorId" com o id retornado na requisição 1
 POST http://localhost:8080/produtos
 Content-Type: application/json
 
@@ -43,7 +43,7 @@ Content-Type: application/json
   "descricao": "Mouse sem fio",
   "preco": 80.00,
   "quantidadeEstoque": 1,
-  "vendedor": { "id": 5 }
+  "vendedorId": 5
 }
 ###
 # ============================================================
