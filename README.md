@@ -176,3 +176,4 @@ Os erros de negócio são tratados por um handler global
 - Avaliações de produtos e vendedores
 - Imagens de produto
 - DTOs em toda a API (Usuário e Produto)
+- IDs únicos com UUID em todas as entidades (após a autenticação)
