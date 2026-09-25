@@ -1,5 +1,7 @@
 package com.ernandesventura.marketplace.controller;
-import com.ernandesventura.marketplace.model.Produto;
+
+import com.ernandesventura.marketplace.dto.ProdutoRequest;
+import com.ernandesventura.marketplace.dto.ProdutoResponse;
 import com.ernandesventura.marketplace.service.ProdutoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/produtos")
@@ -26,50 +27,32 @@ public class ProdutoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Produto>> listarTodos() {
-        List<Produto> produtos = produtoService.listarTodos();
+    public ResponseEntity<List<ProdutoResponse>> listarTodos() {
+        List<ProdutoResponse> produtos = produtoService.listarTodos();
         return ResponseEntity.ok(produtos);
-
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Produto> buscarPorId(@PathVariable Long id) {
-        Optional<Produto> produto = produtoService.buscarPorId(id);
-        if(produto.isPresent()) {
-            return ResponseEntity.ok(produto.get());
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<ProdutoResponse> buscarPorId(@PathVariable Long id) {
+        ProdutoResponse produto = produtoService.buscarPorId(id);
+        return ResponseEntity.ok(produto);
     }
 
     @PostMapping
-    public ResponseEntity<Produto> criar(@RequestBody Produto produto) {
-        Produto produtoSalvo = produtoService.salvar(produto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(produtoSalvo);
+    public ResponseEntity<ProdutoResponse> criar(@RequestBody ProdutoRequest request) {
+        ProdutoResponse produtoCriado = produtoService.criar(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(produtoCriado);
     }
-
 
     @PutMapping("/{id}")
-    public ResponseEntity<Produto> atualizar(@PathVariable Long id, @RequestBody Produto produto) {
-        Optional<Produto> produtoExistente = produtoService.buscarPorId(id);
-
-        if (produtoExistente.isPresent()) {
-            produto.setId(id);
-            Produto produtoAtualizado = produtoService.salvar(produto);
-            return ResponseEntity.ok(produtoAtualizado);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<ProdutoResponse> atualizar(@PathVariable Long id, @RequestBody ProdutoRequest request) {
+        ProdutoResponse produtoAtualizado = produtoService.atualizar(id, request);
+        return ResponseEntity.ok(produtoAtualizado);
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        Optional<Produto> produtoExistente = produtoService.buscarPorId(id);
-
-        if (produtoExistente.isPresent()) {
-            produtoService.deletar(id);
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        produtoService.deletar(id);
+        return ResponseEntity.noContent().build();
     }
 }

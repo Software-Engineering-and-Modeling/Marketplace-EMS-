@@ -7,7 +7,8 @@ decisões de arquitetura (camadas, DTOs, transações, tratamento de erros).
 ## Funcionalidades (v1)
 
 - **Usuários**: CRUD completo. Um usuário pode ser comprador e/ou vendedor.
-- **Produtos**: CRUD completo, com preço, estoque e vendedor.
+- **Produtos**: CRUD completo, com preço, estoque e vendedor. O vendedor é
+  definido na criação e não muda no `PUT`.
 - **Pedidos**: criação e listagem. Ao criar um pedido, o estoque de cada
   produto é validado e debitado.
   - Tudo ou nada: se um item do pedido falhar (ex.: estoque insuficiente),
@@ -107,7 +108,21 @@ Content-Type: application/json
   "descricao": "Teclado mecânico",
   "preco": 150.00,
   "quantidadeEstoque": 10,
-  "vendedor": { "id": 1 }
+  "vendedorId": 1
+}
+```
+
+Resposta (`201 Created`) — o vendedor aparece só com id e nome:
+
+```json
+{
+  "id": 1,
+  "nome": "Teclado",
+  "descricao": "Teclado mecânico",
+  "preco": 150.00,
+  "quantidadeEstoque": 10,
+  "vendedorId": 1,
+  "vendedorNome": "Vendedor Teste"
 }
 ```
 
@@ -146,8 +161,10 @@ Resposta (`201 Created`):
 }
 ```
 
-O arquivo [`http/pedidos.http`](http/pedidos.http) tem um roteiro completo de
-testes, que pode ser executado pelo HTTP Client do IntelliJ.
+A pasta [`http/`](http/) tem roteiros de teste para cada recurso
+([`usuarios.http`](http/usuarios.http), [`produtos.http`](http/produtos.http),
+[`pedidos.http`](http/pedidos.http)), que podem ser executados pelo HTTP
+Client do IntelliJ.
 
 ## Erros
 
@@ -162,10 +179,10 @@ Os erros de negócio são tratados por um handler global
 }
 ```
 
-| Status | Quando                                       |
-|--------|----------------------------------------------|
-| 404    | Comprador ou produto do pedido não encontrado |
-| 409    | Estoque insuficiente para o pedido           |
+| Status | Quando                                                        |
+|--------|---------------------------------------------------------------|
+| 404    | Usuário, produto ou vendedor não encontrado (em qualquer rota) |
+| 409    | Estoque insuficiente para o pedido                            |
 
 ## Próximos passos
 
@@ -175,5 +192,4 @@ Os erros de negócio são tratados por um handler global
 - Pagamento (integração com gateway)
 - Avaliações de produtos e vendedores
 - Imagens de produto
-- DTOs em toda a API (Usuário e Produto)
 - IDs únicos com UUID em todas as entidades (após a autenticação)

@@ -1,10 +1,14 @@
 package com.ernandesventura.marketplace.service;
-import com.ernandesventura.marketplace.repository.UsuarioRepository;
+
+import com.ernandesventura.marketplace.dto.UsuarioRequest;
+import com.ernandesventura.marketplace.dto.UsuarioResponse;
+import com.ernandesventura.marketplace.exception.RecursoNaoEncontradoException;
 import com.ernandesventura.marketplace.model.Usuario;
+import com.ernandesventura.marketplace.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class UsuarioService {
@@ -15,20 +19,40 @@ public class UsuarioService {
         this.usuarioRepository = usuarioRepository;
     }
 
-    public Usuario salvar(Usuario usuario) {
-        return usuarioRepository.save(usuario);
+    public UsuarioResponse criar(UsuarioRequest request) {
+        Usuario usuario = new Usuario(request.nome(), request.email());
+        Usuario usuarioSalvo = usuarioRepository.save(usuario);
+        return UsuarioResponse.fromEntity(usuarioSalvo);
     }
 
-    public List<Usuario> listarTodos() {
-        return usuarioRepository.findAll();
+    public List<UsuarioResponse> listarTodos() {
+        List<UsuarioResponse> resposta = new ArrayList<>();
+        for (Usuario usuario : usuarioRepository.findAll()) {
+            resposta.add(UsuarioResponse.fromEntity(usuario));
+        }
+        return resposta;
     }
 
-    public Optional<Usuario> buscarPorId(Long id) {
-        return usuarioRepository.findById(id);
+    public UsuarioResponse buscarPorId(Long id) {
+        Usuario usuario = buscarEntidadePorId(id);
+        return UsuarioResponse.fromEntity(usuario);
+    }
+
+    public UsuarioResponse atualizar(Long id, UsuarioRequest request) {
+        Usuario usuario = buscarEntidadePorId(id);
+        usuario.setNome(request.nome());
+        usuario.setEmail(request.email());
+        Usuario usuarioAtualizado = usuarioRepository.save(usuario);
+        return UsuarioResponse.fromEntity(usuarioAtualizado);
     }
 
     public void deletar(Long id) {
-        usuarioRepository.deleteById(id);
+        Usuario usuario = buscarEntidadePorId(id);
+        usuarioRepository.delete(usuario);
     }
 
+    public Usuario buscarEntidadePorId(Long id) {
+        return usuarioRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado: " + id));
+    }
 }

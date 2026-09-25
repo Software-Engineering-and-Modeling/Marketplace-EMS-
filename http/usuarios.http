@@ -1,0 +1,61 @@
+# ============================================================
+# TESTES DE USUÁRIO (após migração para DTOs)
+# Ajuste: onde aparece {id} fixo (ex.: 10), use o id retornado na requisição 1
+# ============================================================
+
+### 1. Criar usuário — esperado 201, corpo com id, nome e email
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+
+{
+  "nome": "Usuário DTO",
+  "email": "usuario.dto@teste.com"
+}
+
+### 2. Listar usuários — esperado 200
+GET http://localhost:8080/usuarios
+
+### 3. Buscar por id existente — esperado 200
+# Ajuste o id com o retornado na requisição 1
+GET http://localhost:8080/usuarios/10
+
+### 4. Buscar por id inexistente — esperado 404 com corpo ErroResponse
+GET http://localhost:8080/usuarios/999
+
+### 5. Atualizar usuário existente — esperado 200, dados atualizados
+# Ajuste o id com o retornado na requisição 1
+PUT http://localhost:8080/usuarios/10
+Content-Type: application/json
+
+{
+  "nome": "Usuário DTO Atualizado",
+  "email": "usuario.atualizado@teste.com"
+}
+
+### 6. Atualizar usuário inexistente — esperado 404 com corpo ErroResponse
+PUT http://localhost:8080/usuarios/999
+Content-Type: application/json
+
+{
+  "nome": "Ninguém",
+  "email": "ninguem@teste.com"
+}
+
+### 7. Deletar usuário existente (sem produtos nem pedidos) — esperado 204
+# Ajuste o id com o retornado na requisição 1
+DELETE http://localhost:8080/usuarios/10
+
+### 8. Deletar usuário inexistente — esperado 404 com corpo ErroResponse
+DELETE http://localhost:8080/usuarios/999
+
+### 9. Pedido com comprador inexistente — esperado 404 "Usuário não encontrado: 999"
+# Confirma o ajuste no PedidoService (buscarEntidadePorId)
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+
+{
+  "compradorId": 999,
+  "itens": [
+    { "produtoId": 1, "quantidade": 1 }
+  ]
+}
