@@ -1,10 +1,13 @@
 package com.ernandesventura.marketplace.service;
 
+import com.ernandesventura.marketplace.dto.UsuarioCadastroRequest;
 import com.ernandesventura.marketplace.dto.UsuarioRequest;
 import com.ernandesventura.marketplace.dto.UsuarioResponse;
+import com.ernandesventura.marketplace.exception.EmailJaCadastradoException;
 import com.ernandesventura.marketplace.exception.RecursoNaoEncontradoException;
 import com.ernandesventura.marketplace.model.Usuario;
 import com.ernandesventura.marketplace.repository.UsuarioRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -14,13 +17,19 @@ import java.util.List;
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioService(UsuarioRepository usuarioRepository) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    public UsuarioResponse criar(UsuarioRequest request) {
-        Usuario usuario = new Usuario(request.nome(), request.email());
+    public UsuarioResponse criar(UsuarioCadastroRequest request) {
+        if (usuarioRepository.existsByEmail(request.email())) {
+            throw new EmailJaCadastradoException("Email já cadastrado: " + request.email());
+        }
+        String senhaHash = passwordEncoder.encode(request.senha());
+        Usuario usuario = new Usuario(request.nome(), request.email(), senhaHash);
         Usuario usuarioSalvo = usuarioRepository.save(usuario);
         return UsuarioResponse.fromEntity(usuarioSalvo);
     }
@@ -40,6 +49,10 @@ public class UsuarioService {
 
     public UsuarioResponse atualizar(Long id, UsuarioRequest request) {
         Usuario usuario = buscarEntidadePorId(id);
+        boolean emailMudou = !usuario.getEmail().equals(request.email());
+        if (emailMudou && usuarioRepository.existsByEmail(request.email())) {
+            throw new EmailJaCadastradoException("Email já cadastrado: " + request.email());
+        }
         usuario.setNome(request.nome());
         usuario.setEmail(request.email());
         Usuario usuarioAtualizado = usuarioRepository.save(usuario);

@@ -1,5 +1,6 @@
 package com.ernandesventura.marketplace.controller;
 
+import com.ernandesventura.marketplace.dto.UsuarioCadastroRequest;
 import com.ernandesventura.marketplace.dto.UsuarioRequest;
 import com.ernandesventura.marketplace.dto.UsuarioResponse;
 import com.ernandesventura.marketplace.service.UsuarioService;
@@ -39,7 +40,7 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<UsuarioResponse> criar(@RequestBody UsuarioRequest request) {
+    public ResponseEntity<UsuarioResponse> criar(@RequestBody UsuarioCadastroRequest request) {
         UsuarioResponse usuarioCriado = usuarioService.criar(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(usuarioCriado);
     }
