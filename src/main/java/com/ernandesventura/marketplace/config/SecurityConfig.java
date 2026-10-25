@@ -56,7 +56,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   AutenticacaoEntryPoint autenticacaoEntryPoint) throws Exception {
         http
                 // API com token não usa cookie de sessão, então não precisa de proteção CSRF
                 .csrf(csrf -> csrf.disable())
@@ -65,12 +66,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(rotas -> rotas
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/usuarios").permitAll()
+                        // Vitrine: qualquer pessoa vê o catálogo; login só para comprar/vender
+                        .requestMatchers(HttpMethod.GET, "/produtos", "/produtos/*").permitAll()
                         // Página de erro do Spring: sem isso, qualquer erro (400, 500...) vira 401
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )
-                // Confere o token JWT de cada requisição usando o JwtDecoder acima
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+                // 401 em JSON (ErroResponse) quando falta token em rota protegida
+                .exceptionHandling(erros -> erros.authenticationEntryPoint(autenticacaoEntryPoint))
+                // Confere o token JWT de cada requisição usando o JwtDecoder acima;
+                // token inválido/expirado também responde pelo AutenticacaoEntryPoint
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(autenticacaoEntryPoint)
+                        .jwt(Customizer.withDefaults()));
 
         return http.build();
     }
