@@ -2,6 +2,7 @@ package com.ernandesventura.marketplace.service;
 
 import com.ernandesventura.marketplace.dto.ProdutoRequest;
 import com.ernandesventura.marketplace.dto.ProdutoResponse;
+import com.ernandesventura.marketplace.exception.AcessoNegadoException;
 import com.ernandesventura.marketplace.exception.EstoqueInsuficienteException;
 import com.ernandesventura.marketplace.exception.RecursoNaoEncontradoException;
 import com.ernandesventura.marketplace.model.Produto;
@@ -23,8 +24,9 @@ public class ProdutoService {
         this.usuarioService = usuarioService;
     }
 
-    public ProdutoResponse criar(ProdutoRequest request) {
-        Usuario vendedor = usuarioService.buscarEntidadePorId(request.vendedorId());
+    // vendedorId = id do usuário logado (vem do token, não do JSON)
+    public ProdutoResponse criar(ProdutoRequest request, Long vendedorId) {
+        Usuario vendedor = usuarioService.buscarEntidadePorId(vendedorId);
         Produto produto = new Produto(request.nome(), request.descricao(), request.preco(),
                 request.quantidadeEstoque(), vendedor);
         Produto produtoSalvo = produtoRepository.save(produto);
@@ -44,8 +46,9 @@ public class ProdutoService {
         return ProdutoResponse.fromEntity(produto);
     }
 
-    public ProdutoResponse atualizar(Long id, ProdutoRequest request) {
+    public ProdutoResponse atualizar(Long id, ProdutoRequest request, Long usuarioLogadoId) {
         Produto produto = buscarEntidadePorId(id);
+        verificarDono(produto, usuarioLogadoId);
         produto.setNome(request.nome());
         produto.setDescricao(request.descricao());
         produto.setPreco(request.preco());
@@ -54,10 +57,19 @@ public class ProdutoService {
         return ProdutoResponse.fromEntity(produtoAtualizado);
     }
 
-    public void inativar(Long id) {
+    public void inativar(Long id, Long usuarioLogadoId) {
         Produto produto = buscarEntidadePorId(id);
+        verificarDono(produto, usuarioLogadoId);
         produto.setAtivo(false);
         produtoRepository.save(produto);
+    }
+
+    // Só o vendedor (dono) do produto pode alterá-lo ou inativá-lo
+    private void verificarDono(Produto produto, Long usuarioLogadoId) {
+        Long vendedorId = produto.getVendedor().getId();
+        if (!vendedorId.equals(usuarioLogadoId)) {
+            throw new AcessoNegadoException("Apenas o vendedor do produto pode alterá-lo");
+        }
     }
 
     public Produto buscarEntidadePorId(Long id) {

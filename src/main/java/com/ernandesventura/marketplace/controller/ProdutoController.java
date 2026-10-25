@@ -5,6 +5,8 @@ import com.ernandesventura.marketplace.dto.ProdutoResponse;
 import com.ernandesventura.marketplace.service.ProdutoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,20 +41,26 @@ public class ProdutoController {
     }
 
     @PostMapping
-    public ResponseEntity<ProdutoResponse> criar(@RequestBody ProdutoRequest request) {
-        ProdutoResponse produtoCriado = produtoService.criar(request);
+    public ResponseEntity<ProdutoResponse> criar(@RequestBody ProdutoRequest request,
+                                                 @AuthenticationPrincipal Jwt jwt) {
+        // O "subject" do token é o id do usuário logado (definido no AuthService)
+        Long usuarioLogadoId = Long.valueOf(jwt.getSubject());
+        ProdutoResponse produtoCriado = produtoService.criar(request, usuarioLogadoId);
         return ResponseEntity.status(HttpStatus.CREATED).body(produtoCriado);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProdutoResponse> atualizar(@PathVariable Long id, @RequestBody ProdutoRequest request) {
-        ProdutoResponse produtoAtualizado = produtoService.atualizar(id, request);
+    public ResponseEntity<ProdutoResponse> atualizar(@PathVariable Long id, @RequestBody ProdutoRequest request,
+                                                     @AuthenticationPrincipal Jwt jwt) {
+        Long usuarioLogadoId = Long.valueOf(jwt.getSubject());
+        ProdutoResponse produtoAtualizado = produtoService.atualizar(id, request, usuarioLogadoId);
         return ResponseEntity.ok(produtoAtualizado);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        produtoService.inativar(id);
+    public ResponseEntity<Void> deletar(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        Long usuarioLogadoId = Long.valueOf(jwt.getSubject());
+        produtoService.inativar(id, usuarioLogadoId);
         return ResponseEntity.noContent().build();
     }
 }

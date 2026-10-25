@@ -1,104 +1,120 @@
 # ============================================================
-# PREPARAÇÃO — criar usuários e produtos para os testes
+# TESTES DE PEDIDO (fase 4 — autorização)
+# Rode em ordem, de cima para baixo. Tokens e ids ficam em variáveis do
+# IntelliJ ({{tokenComprador}}, {{tecladoId}}...), sem copiar nada à mão.
+# Se rodar de novo, os cadastros 1/2 dão 409 (email já existe) — normal.
+# Os produtos são criados de novo a cada rodada (estoque sempre 10 e 1).
 # ============================================================
 
-### 1. Criar vendedor
+### 1. Cadastrar vendedor
 POST http://localhost:8080/usuarios
 Content-Type: application/json
 
-{
-  "nome": "Vendedor Teste",
-  "email": "vendedor@teste.com"
-}
+{ "nome": "Vendedor Teste", "email": "vendedor@teste.com", "senha": "senha123" }
 
-### 2. Criar comprador
+### 2. Cadastrar comprador
 POST http://localhost:8080/usuarios
 Content-Type: application/json
 
-{
-  "nome": "Comprador Teste",
-  "email": "comprador@teste.com"
-}
+{ "nome": "Comprador Teste", "email": "comprador@teste.com", "senha": "senha123" }
 
-### 3. Criar produto Teclado (estoque 10)
-# Ajuste "vendedorId" com o id retornado na requisição 1
-POST http://localhost:8080/produtos
+### 3. Login do vendedor — guarda o token
+POST http://localhost:8080/auth/login
 Content-Type: application/json
 
-{
-  "nome": "Teclado",
-  "descricao": "Teclado mecânico",
-  "preco": 150.00,
-  "quantidadeEstoque": 10,
-  "vendedorId": 5
-}
+{ "email": "vendedor@teste.com", "senha": "senha123" }
 
-### 4. Criar produto Mouse (estoque 1)
-# Ajuste "vendedorId" com o id retornado na requisição 1
-POST http://localhost:8080/produtos
+> {% client.global.set("tokenVendedor", response.body.token); %}
+
+### 4. Login do comprador — guarda o token
+POST http://localhost:8080/auth/login
 Content-Type: application/json
 
-{
-  "nome": "Mouse",
-  "descricao": "Mouse sem fio",
-  "preco": 80.00,
-  "quantidadeEstoque": 1,
-  "vendedorId": 5
-}
-###
+{ "email": "comprador@teste.com", "senha": "senha123" }
+
+> {% client.global.set("tokenComprador", response.body.token); %}
+
+### 5. Vendedor cria Teclado (estoque 10)
+POST http://localhost:8080/produtos
+Content-Type: application/json
+Authorization: Bearer {{tokenVendedor}}
+
+{ "nome": "Teclado", "descricao": "Teclado mecânico", "preco": 150.00, "quantidadeEstoque": 10 }
+
+> {% client.global.set("tecladoId", response.body.id); %}
+
+### 6. Vendedor cria Mouse (estoque 1)
+POST http://localhost:8080/produtos
+Content-Type: application/json
+Authorization: Bearer {{tokenVendedor}}
+
+{ "nome": "Mouse", "descricao": "Mouse sem fio", "preco": 80.00, "quantidadeEstoque": 1 }
+
+> {% client.global.set("mouseId", response.body.id); %}
+
 # ============================================================
 # TESTES DE PEDIDO
-# Ajuste: compradorId = id da req. 2 | Teclado = id da req. 3 | Mouse = id da req. 4
 # ============================================================
 
-### 5. Pedido válido — esperado 201, total = 300.00 (Teclado estoque 10 → 8)
+### 7. Pedido válido — esperado 201, comprador = usuário do token, total = 300.00 (Teclado 10 → 8)
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+Authorization: Bearer {{tokenComprador}}
+
+{ "itens": [ { "produtoId": {{tecladoId}}, "quantidade": 2 } ] }
+
+### 8. Pedido sem token — esperado 401 "Autenticação necessária"
 POST http://localhost:8080/pedidos
 Content-Type: application/json
 
-{
-  "compradorId": 4,
-  "itens": [
-    { "produtoId": 5, "quantidade": 2 }
-  ]
-}
+{ "itens": [ { "produtoId": {{tecladoId}}, "quantidade": 1 } ] }
 
-### 6. Produto inexistente — esperado 404
+### 9. Produto inexistente — esperado 404
 POST http://localhost:8080/pedidos
 Content-Type: application/json
+Authorization: Bearer {{tokenComprador}}
 
-{
-  "compradorId": 6,
-  "itens": [
-    { "produtoId": 9999, "quantidade": 1 }
-  ]
-}
+{ "itens": [ { "produtoId": 9999, "quantidade": 1 } ] }
 
-### 7. Estoque insuficiente — esperado 409 (Mouse tem só 1)
+### 10. Estoque insuficiente — esperado 409 (Mouse tem só 1)
 POST http://localhost:8080/pedidos
 Content-Type: application/json
+Authorization: Bearer {{tokenComprador}}
 
-{
-  "compradorId": 4,
-  "itens": [
-    { "produtoId": 3, "quantidade": 5 }
-  ]
-}
+{ "itens": [ { "produtoId": {{mouseId}}, "quantidade": 5 } ] }
 
-### 8. Rollback — Teclado OK + Mouse sem estoque — esperado 409
+### 11. Rollback — Teclado OK + Mouse sem estoque — esperado 409
 POST http://localhost:8080/pedidos
 Content-Type: application/json
+Authorization: Bearer {{tokenComprador}}
 
-{
-  "compradorId": 2,
-  "itens": [
-    { "produtoId": 1, "quantidade": 3 },
-    { "produtoId": 2, "quantidade": 5 }
-  ]
-}
+{ "itens": [ { "produtoId": {{tecladoId}}, "quantidade": 3 }, { "produtoId": {{mouseId}}, "quantidade": 5 } ] }
 
-### 9. Conferir rollback — Teclado deve continuar com estoque 8 (e não 5)
-# Ajuste o id no final da URL para o id do Teclado
-GET http://localhost:8080/produtos/1
+### 12. Conferir rollback — Teclado deve continuar com estoque 8 (e não 5)
+GET http://localhost:8080/produtos/{{tecladoId}}
 
-### 10. Listar pedidos — esperado 200, só o pedido da req. 5, sem loop no JSON
+### 13. Vendedor tenta comprar o próprio produto — esperado 400 "Você não pode comprar o próprio produto"
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+Authorization: Bearer {{tokenVendedor}}
+
+{ "itens": [ { "produtoId": {{tecladoId}}, "quantidade": 1 } ] }
+
+### 14. Meus pedidos (comprador) — esperado 200, com o pedido da req. 7 (só pedidos dele)
 GET http://localhost:8080/pedidos
+Authorization: Bearer {{tokenComprador}}
+
+### 15. Meus pedidos (vendedor) — esperado 200 e lista vazia (ele vendeu, mas não comprou)
+GET http://localhost:8080/pedidos
+Authorization: Bearer {{tokenVendedor}}
+
+### 16. Vendedor inativa o Mouse
+DELETE http://localhost:8080/produtos/{{mouseId}}
+Authorization: Bearer {{tokenVendedor}}
+
+### 17. Pedido com produto inativado — esperado 404 "Produto não encontrado"
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+Authorization: Bearer {{tokenComprador}}
+
+{ "itens": [ { "produtoId": {{mouseId}}, "quantidade": 1 } ] }

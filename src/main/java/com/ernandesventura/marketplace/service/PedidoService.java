@@ -3,6 +3,7 @@ package com.ernandesventura.marketplace.service;
 import com.ernandesventura.marketplace.dto.ItemPedidoRequest;
 import com.ernandesventura.marketplace.dto.PedidoRequest;
 import com.ernandesventura.marketplace.dto.PedidoResponse;
+import com.ernandesventura.marketplace.exception.OperacaoInvalidaException;
 import com.ernandesventura.marketplace.model.ItemPedido;
 import com.ernandesventura.marketplace.model.Pedido;
 import com.ernandesventura.marketplace.model.Produto;
@@ -28,14 +29,20 @@ public class PedidoService {
     }
 
     @Transactional
-    public PedidoResponse criar(PedidoRequest request) {
-        Long compradorId = request.compradorId();
+    // compradorId = id do usuário logado (vem do token, não do JSON)
+    public PedidoResponse criar(PedidoRequest request, Long compradorId) {
         Usuario comprador = usuarioService.buscarEntidadePorId(compradorId);
 
         Pedido pedido = new Pedido(comprador, LocalDateTime.now());
 
         for (ItemPedidoRequest itemRequest : request.itens()) {
             Produto produto = produtoService.buscarEntidadePorId(itemRequest.produtoId());
+
+            // Vendedor não compra o próprio produto. Como o método é @Transactional,
+            // o estoque já debitado de itens anteriores é desfeito.
+            if (produto.getVendedor().getId().equals(compradorId)) {
+                throw new OperacaoInvalidaException("Você não pode comprar o próprio produto: " + produto.getNome());
+            }
 
             Integer quantidade = itemRequest.quantidade();
             produtoService.debitarEstoque(produto, quantidade);
@@ -49,8 +56,9 @@ public class PedidoService {
     }
 
     @Transactional(readOnly = true)
-    public List<PedidoResponse> listarTodos() {
-        List<Pedido> pedidos = pedidoRepository.findAll();
+    // Só os pedidos em que o usuário logado é o comprador
+    public List<PedidoResponse> listarPorComprador(Long compradorId) {
+        List<Pedido> pedidos = pedidoRepository.findByCompradorId(compradorId);
         List<PedidoResponse> resposta = new ArrayList<>();
 
         for (Pedido pedido : pedidos) {

@@ -5,6 +5,8 @@ import com.ernandesventura.marketplace.dto.PedidoResponse;
 import com.ernandesventura.marketplace.service.PedidoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,14 +26,17 @@ public class PedidoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PedidoResponse>> listarTodos() {
-        List<PedidoResponse> pedidos = pedidoService.listarTodos();
+    public ResponseEntity<List<PedidoResponse>> listarMeusPedidos(@AuthenticationPrincipal Jwt jwt) {
+        Long usuarioLogadoId = Long.valueOf(jwt.getSubject());
+        List<PedidoResponse> pedidos = pedidoService.listarPorComprador(usuarioLogadoId);
         return ResponseEntity.ok(pedidos);
     }
 
     @PostMapping
-    public ResponseEntity<PedidoResponse> criar(@RequestBody PedidoRequest request) {
-        PedidoResponse pedidoCriado = pedidoService.criar(request);
+    public ResponseEntity<PedidoResponse> criar(@RequestBody PedidoRequest request,
+                                                @AuthenticationPrincipal Jwt jwt) {
+        Long usuarioLogadoId = Long.valueOf(jwt.getSubject());
+        PedidoResponse pedidoCriado = pedidoService.criar(request, usuarioLogadoId);
         return ResponseEntity.status(HttpStatus.CREATED).body(pedidoCriado);
     }
 }

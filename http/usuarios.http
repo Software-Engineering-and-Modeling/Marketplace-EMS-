@@ -1,112 +1,146 @@
 # ============================================================
-# TESTES DE USUÁRIO (após migração para DTOs)
-# Ajuste: onde aparece {id} fixo (ex.: 10), use o id retornado na requisição 1
+# TESTES DE USUÁRIO (fase 4 — autorização)
+# Rode em ordem, de cima para baixo. Cada rodada cria usuários com email
+# novo (script "< {% %}" antes da requisição), então dá para repetir à
+# vontade. Tokens e ids ficam em variáveis do IntelliJ ({{tokenAna}}, {{anaId}}...).
+# Regra: cada usuário só vê, edita ou inativa a PRÓPRIA conta.
 # ============================================================
 
-### 1. Criar usuário — esperado 201, corpo com id, nome e email
+### 1. Cadastrar Ana — esperado 201, corpo com id, nome e email (sem senha)
+< {% client.global.set("emailAna", "ana" + Date.now() + "@teste.com"); %}
 POST http://localhost:8080/usuarios
 Content-Type: application/json
 
-{
-  "nome": "Usuário DTO",
-  "email": "usuario.dto@teste.com"
-}
+{ "nome": "Ana", "email": "{{emailAna}}", "senha": "senha123" }
 
-### 2. Listar usuários — esperado 200
+> {% client.global.set("anaId", response.body.id); %}
+
+### 2. Cadastrar Bruno — esperado 201
+< {% client.global.set("emailBruno", "bruno" + Date.now() + "@teste.com"); %}
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+
+{ "nome": "Bruno", "email": "{{emailBruno}}", "senha": "senha123" }
+
+> {% client.global.set("brunoId", response.body.id); %}
+
+### 3. Cadastrar com email repetido — esperado 409 "Email já cadastrado"
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+
+{ "nome": "Ana Cópia", "email": "{{emailAna}}", "senha": "outra" }
+
+### 4. Login da Ana — guarda o token
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{ "email": "{{emailAna}}", "senha": "senha123" }
+
+> {% client.global.set("tokenAna", response.body.token); %}
+
+### 5. Login do Bruno — guarda o token
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{ "email": "{{emailBruno}}", "senha": "senha123" }
+
+> {% client.global.set("tokenBruno", response.body.token); %}
+
+### 6. Login com senha errada — esperado 401 "Email ou senha inválidos"
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{ "email": "{{emailAna}}", "senha": "errada" }
+
+# ============================================================
+# VER / EDITAR A PRÓPRIA CONTA
+# ============================================================
+
+### 7. Ana vê a própria conta — esperado 200
+GET http://localhost:8080/usuarios/{{anaId}}
+Authorization: Bearer {{tokenAna}}
+
+### 8. Ana tenta ver a conta do Bruno — esperado 403 "Você só pode acessar a própria conta"
+GET http://localhost:8080/usuarios/{{brunoId}}
+Authorization: Bearer {{tokenAna}}
+
+### 9. Ana tenta ver id inexistente — esperado 403 (não revela se o id existe)
+GET http://localhost:8080/usuarios/999999
+Authorization: Bearer {{tokenAna}}
+
+### 10. Ver conta sem token — esperado 401 "Autenticação necessária"
+GET http://localhost:8080/usuarios/{{anaId}}
+
+### 11. Listar usuários — rota removida: esperado 405 (Method Not Allowed)
 GET http://localhost:8080/usuarios
+Authorization: Bearer {{tokenAna}}
 
-### 3. Buscar por id existente — esperado 200
-# Ajuste o id com o retornado na requisição 1
-GET http://localhost:8080/usuarios/10
-
-### 4. Buscar por id inexistente — esperado 404 com corpo ErroResponse
-GET http://localhost:8080/usuarios/999
-
-### 5. Atualizar usuário existente — esperado 200, dados atualizados
-# Ajuste o id com o retornado na requisição 1
-PUT http://localhost:8080/usuarios/10
+### 12. Ana atualiza a própria conta — esperado 200
+PUT http://localhost:8080/usuarios/{{anaId}}
 Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
 
-{
-  "nome": "Usuário DTO Atualizado",
-  "email": "usuario.atualizado@teste.com"
-}
+{ "nome": "Ana Atualizada", "email": "{{emailAna}}" }
 
-### 6. Atualizar usuário inexistente — esperado 404 com corpo ErroResponse
-PUT http://localhost:8080/usuarios/999
+### 13. Ana tenta atualizar para o email do Bruno — esperado 409 "Email já cadastrado"
+PUT http://localhost:8080/usuarios/{{anaId}}
 Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
 
-{
-  "nome": "Ninguém",
-  "email": "ninguem@teste.com"
-}
+{ "nome": "Ana", "email": "{{emailBruno}}" }
 
-### 7. Deletar (inativar) usuário existente — esperado 204
-# Soft delete: a linha fica no banco com ativo = false; funciona mesmo se ele tiver produtos/pedidos
-# Ajuste o id com o retornado na requisição 1
-DELETE http://localhost:8080/usuarios/10
-
-### 8. Deletar usuário inexistente — esperado 404 com corpo ErroResponse
-DELETE http://localhost:8080/usuarios/999
-
-### 9. Pedido com comprador inexistente — esperado 404 "Usuário não encontrado: 999"
-# Confirma o ajuste no PedidoService (buscarEntidadePorId)
-POST http://localhost:8080/pedidos
+### 14. Ana tenta atualizar o Bruno — esperado 403
+PUT http://localhost:8080/usuarios/{{brunoId}}
 Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
 
-{
-  "compradorId": 999,
-  "itens": [
-    { "produtoId": 1, "quantidade": 1 }
-  ]
-}
+{ "nome": "Bruno Hackeado", "email": "{{emailBruno}}" }
+
+### 15. Ana tenta inativar o Bruno — esperado 403
+DELETE http://localhost:8080/usuarios/{{brunoId}}
+Authorization: Bearer {{tokenAna}}
 
 # ============================================================
 # INATIVAÇÃO (soft delete) — usuário inativo é tratado como inexistente
-# Ajuste: 10 = id do usuário inativado na requisição 7
-#         produtoId (req. 14) = id de um produto ativo
 # ============================================================
 
-### 10. Buscar usuário inativado — esperado 404
-GET http://localhost:8080/usuarios/10
-
-### 11. Listar usuários — esperado 200, SEM o usuário inativado
-GET http://localhost:8080/usuarios
-
-### 12. Atualizar usuário inativado — esperado 404
-PUT http://localhost:8080/usuarios/10
-Content-Type: application/json
-
-{
-  "nome": "Não deve atualizar",
-  "email": "nao@teste.com"
-}
-
-### 13. Inativar de novo — esperado 404
-DELETE http://localhost:8080/usuarios/10
-
-### 14. Pedido com comprador inativado — esperado 404 "Usuário não encontrado"
-POST http://localhost:8080/pedidos
-Content-Type: application/json
-
-{
-  "compradorId": 10,
-  "itens": [
-    { "produtoId": 1, "quantidade": 1 }
-  ]
-}
-
-### 15. Criar produto com vendedor inativado — esperado 404 "Usuário não encontrado"
+### 16. Bruno cria um produto antes de sair
 POST http://localhost:8080/produtos
 Content-Type: application/json
+Authorization: Bearer {{tokenBruno}}
 
-{
-  "nome": "Não deve criar",
-  "descricao": "Vendedor inativo",
-  "preco": 10.00,
-  "quantidadeEstoque": 1,
-  "vendedorId": 10
-}
+{ "nome": "Cadeira", "descricao": "Cadeira gamer", "preco": 700.00, "quantidadeEstoque": 2 }
 
-### 16. Listar pedidos — esperado 200; pedidos antigos do usuário inativado continuam aparecendo
-GET http://localhost:8080/pedidos
+> {% client.global.set("cadeiraId", response.body.id); %}
+
+### 17. Bruno inativa a própria conta — esperado 204
+# Soft delete: a linha fica no banco com ativo = false; funciona mesmo com produtos/pedidos
+DELETE http://localhost:8080/usuarios/{{brunoId}}
+Authorization: Bearer {{tokenBruno}}
+
+### 18. Login do Bruno inativado — esperado 401 "Email ou senha inválidos"
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{ "email": "{{emailBruno}}", "senha": "senha123" }
+
+### 19. Token antigo do Bruno ainda vale até expirar, mas a conta "não existe" — esperado 404
+GET http://localhost:8080/usuarios/{{brunoId}}
+Authorization: Bearer {{tokenBruno}}
+
+### 20. Produto do vendedor inativado some — esperado 404
+GET http://localhost:8080/produtos/{{cadeiraId}}
+
+### 21. Bruno (inativado) tenta criar produto com o token antigo — esperado 404 "Usuário não encontrado"
+POST http://localhost:8080/produtos
+Content-Type: application/json
+Authorization: Bearer {{tokenBruno}}
+
+{ "nome": "Não deve criar", "descricao": "Vendedor inativo", "preco": 10.00, "quantidadeEstoque": 1 }
+
+### 22. Bruno (inativado) tenta comprar com o token antigo — esperado 404 "Usuário não encontrado"
+POST http://localhost:8080/pedidos
+Content-Type: application/json
+Authorization: Bearer {{tokenBruno}}
+
+{ "itens": [ { "produtoId": 1, "quantidade": 1 } ] }

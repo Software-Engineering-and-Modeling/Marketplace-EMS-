@@ -1,114 +1,125 @@
 # ============================================================
-# TESTES DE PRODUTO (após migração para DTOs)
-# Ajuste: vendedorId = id de um usuário existente (ex.: 5)
-#         onde aparece o id 20, use o id retornado na requisição 1
+# TESTES DE PRODUTO (fase 4 — autorização)
+# Rode em ordem, de cima para baixo. O token e os ids ficam guardados em
+# variáveis do IntelliJ ({{tokenVendedor}}, {{produtoId}}...), então não
+# precisa copiar nada à mão.
+# Se rodar de novo, os cadastros 0.1/0.2 dão 409 (email já existe) — normal,
+# os logins seguintes continuam funcionando.
 # ============================================================
 
-### 1. Criar produto — esperado 201, corpo com vendedorId e vendedorNome
+### 0.1 Cadastrar vendedor (dono dos produtos)
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+
+{ "nome": "Vendedor", "email": "vendedor@ex.com", "senha": "senha123" }
+
+### 0.2 Cadastrar outro usuário (não é dono)
+POST http://localhost:8080/usuarios
+Content-Type: application/json
+
+{ "nome": "Outro", "email": "outro@ex.com", "senha": "senha123" }
+
+### 0.3 Login do vendedor — guarda o token
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{ "email": "vendedor@ex.com", "senha": "senha123" }
+
+> {% client.global.set("tokenVendedor", response.body.token); %}
+
+### 0.4 Login do outro usuário — guarda o token
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{ "email": "outro@ex.com", "senha": "senha123" }
+
+> {% client.global.set("tokenOutro", response.body.token); %}
+
+### 1. Criar produto — esperado 201; vendedorId/vendedorNome = usuário do token
 POST http://localhost:8080/produtos
 Content-Type: application/json
+Authorization: Bearer {{tokenVendedor}}
 
 {
   "nome": "Monitor",
   "descricao": "Monitor 24 polegadas",
   "preco": 900.00,
-  "quantidadeEstoque": 3,
-  "vendedorId": 5
+  "quantidadeEstoque": 3
 }
 
-### 2. Criar produto com vendedor inexistente — esperado 404 "Usuário não encontrado: 999"
+> {% client.global.set("produtoId", response.body.id); %}
+
+### 2. Criar produto sem token — esperado 401 "Autenticação necessária"
 POST http://localhost:8080/produtos
 Content-Type: application/json
 
-{
-  "nome": "Produto Órfão",
-  "descricao": "Vendedor não existe",
-  "preco": 10.00,
-  "quantidadeEstoque": 1,
-  "vendedorId": 999
-}
+{ "nome": "Sem dono", "descricao": "x", "preco": 10.00, "quantidadeEstoque": 1 }
 
-### 3. Listar produtos — esperado 200
+### 3. Listar produtos (público, sem token) — esperado 200
 GET http://localhost:8080/produtos
 
-### 4. Buscar por id existente — esperado 200
-# Ajuste o id com o retornado na requisição 1
-GET http://localhost:8080/produtos/20
+### 4. Buscar por id (público, sem token) — esperado 200
+GET http://localhost:8080/produtos/{{produtoId}}
 
 ### 5. Buscar por id inexistente — esperado 404 com corpo ErroResponse
 GET http://localhost:8080/produtos/999
 
-### 6. Atualizar produto tentando trocar o vendedor — esperado 200,
-# nome/preço/estoque atualizados e vendedorId INALTERADO (continua o da req. 1)
-# Ajuste o id com o retornado na requisição 1; vendedorId = outro usuário existente
-PUT http://localhost:8080/produtos/20
+### 6. Atualizar como dono — esperado 200 com os dados novos
+PUT http://localhost:8080/produtos/{{produtoId}}
 Content-Type: application/json
+Authorization: Bearer {{tokenVendedor}}
 
 {
   "nome": "Monitor 27",
   "descricao": "Monitor 27 polegadas",
   "preco": 1200.00,
-  "quantidadeEstoque": 2,
-  "vendedorId": 6
+  "quantidadeEstoque": 2
 }
 
-### 7. Atualizar produto inexistente — esperado 404 com corpo ErroResponse
+### 7. Atualizar produto de OUTRO vendedor — esperado 403 "Apenas o vendedor do produto pode alterá-lo"
+PUT http://localhost:8080/produtos/{{produtoId}}
+Content-Type: application/json
+Authorization: Bearer {{tokenOutro}}
+
+{ "nome": "Hackeado", "descricao": "x", "preco": 1.00, "quantidadeEstoque": 1 }
+
+### 8. Atualizar produto inexistente — esperado 404 (antes de checar o dono)
 PUT http://localhost:8080/produtos/999
 Content-Type: application/json
+Authorization: Bearer {{tokenVendedor}}
 
-{
-  "nome": "Ninguém",
-  "descricao": "Não existe",
-  "preco": 1.00,
-  "quantidadeEstoque": 1,
-  "vendedorId": 5
-}
+{ "nome": "Ninguém", "descricao": "Não existe", "preco": 1.00, "quantidadeEstoque": 1 }
 
-### 8. Deletar (inativar) produto existente — esperado 204
-# Soft delete: a linha fica no banco com ativo = false; funciona mesmo se o produto estiver em pedidos
-# Ajuste o id com o retornado na requisição 1
-DELETE http://localhost:8080/produtos/20
+### 9. Inativar produto de OUTRO vendedor — esperado 403
+DELETE http://localhost:8080/produtos/{{produtoId}}
+Authorization: Bearer {{tokenOutro}}
 
-### 9. Deletar produto inexistente — esperado 404 com corpo ErroResponse
-DELETE http://localhost:8080/produtos/999
+### 10. Inativar como dono — esperado 204
+# Soft delete: a linha fica no banco com ativo = false
+DELETE http://localhost:8080/produtos/{{produtoId}}
+Authorization: Bearer {{tokenVendedor}}
 
 # ============================================================
 # INATIVAÇÃO (soft delete) — produto inativo é tratado como inexistente
-# Ajuste: 20 = id do produto inativado na requisição 8
-#         compradorId = id de um usuário ativo
 # ============================================================
 
-### 10. Buscar produto inativado — esperado 404
-GET http://localhost:8080/produtos/20
+### 11. Buscar produto inativado — esperado 404
+GET http://localhost:8080/produtos/{{produtoId}}
 
-### 11. Listar produtos — esperado 200, SEM o produto inativado
+### 12. Listar produtos — esperado 200, SEM o produto inativado
 GET http://localhost:8080/produtos
 
-### 12. Atualizar produto inativado — esperado 404
-PUT http://localhost:8080/produtos/20
+### 13. Atualizar produto inativado — esperado 404
+PUT http://localhost:8080/produtos/{{produtoId}}
 Content-Type: application/json
+Authorization: Bearer {{tokenVendedor}}
 
-{
-  "nome": "Não deve atualizar",
-  "descricao": "Produto inativo",
-  "preco": 1.00,
-  "quantidadeEstoque": 1,
-  "vendedorId": 5
-}
+{ "nome": "Não deve atualizar", "descricao": "Produto inativo", "preco": 1.00, "quantidadeEstoque": 1 }
 
-### 13. Inativar de novo — esperado 404
-DELETE http://localhost:8080/produtos/20
-
-### 14. Pedido com produto inativado — esperado 404 "Produto não encontrado"
-POST http://localhost:8080/pedidos
-Content-Type: application/json
-
-{
-  "compradorId": 6,
-  "itens": [
-    { "produtoId": 20, "quantidade": 1 }
-  ]
-}
+### 14. Inativar de novo — esperado 404
+DELETE http://localhost:8080/produtos/{{produtoId}}
+Authorization: Bearer {{tokenVendedor}}
 
 # Obs.: produtos de um VENDEDOR inativado também são tratados como inexistentes
-# (somem da lista, GET/PUT/DELETE/pedido dão 404) — ver usuarios.http, req. 7.
+# (somem da lista, GET/PUT/DELETE/pedido dão 404) — ver usuarios.http.
+# O pedido com produto inativado (antiga req. 14) passa para pedidos.http na etapa 4.3.

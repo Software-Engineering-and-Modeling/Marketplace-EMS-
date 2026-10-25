@@ -37,4 +37,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erro);
     }
 
+    @ExceptionHandler(AcessoNegadoException.class)
+    public ResponseEntity<ErroResponse> tratarAcessoNegado(AcessoNegadoException ex) {
+        ErroResponse erro = new ErroResponse(HttpStatus.FORBIDDEN.value(),
+                ex.getMessage(), LocalDateTime.now());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(erro);
+    }
+
+    @ExceptionHandler(OperacaoInvalidaException.class)
+    public ResponseEntity<ErroResponse> tratarOperacaoInvalida(OperacaoInvalidaException ex) {
+        ErroResponse erro = new ErroResponse(HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(), LocalDateTime.now());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
+    }
+
 }
