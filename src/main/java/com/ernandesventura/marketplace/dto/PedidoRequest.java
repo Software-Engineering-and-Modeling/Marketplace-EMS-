@@ -1,5 +1,6 @@
 package com.ernandesventura.marketplace.dto;
 import java.util.List;
 
-public record PedidoRequest(Long compradorId, List<ItemPedidoRequest> itens) {
+// O comprador não vem no JSON: é o usuário logado (token)
+public record PedidoRequest(List<ItemPedidoRequest> itens) {
 }
